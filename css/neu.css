@@ -47,7 +47,7 @@ body{
 h1,h2,h3,h4{color:var(--p700); font-weight:600; margin:0;}
 p{margin:0;}
 button{font-family:inherit; border:0; cursor:pointer; background:none; color:inherit;}
-input,select,textarea{font-family:inherit; font-size:15px; color:var(--p700);}
+input,select,textarea{font-family:inherit; font-size:15px; color:var(--p700); -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; touch-action:manipulation;}
 ::placeholder{color:var(--p300);}
 @media(prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important;}}
 
@@ -165,7 +165,8 @@ select.clay-input{appearance:none;}
 .bar>i{display:block;height:100%;border-radius:99px;background:var(--ac);transition:width .4s;}
 
 /* 弹窗 */
-#overlay{position:fixed;inset:0;background:rgba(90,100,115,.28);backdrop-filter:blur(3px);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+/* 注意：iOS PWA(添加到主屏幕)下，遮罩不能用 backdrop-filter，否则会吞掉弹窗输入框焦点、弹不出键盘、无法打字。改用纯半透明背景。 */
+#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;}
 #overlay.show{display:flex;}
 @media(min-width:768px){#overlay.show{align-items:center;}}
 #modal{
