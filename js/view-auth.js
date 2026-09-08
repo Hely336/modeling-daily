@@ -39,6 +39,7 @@ function card(o){
   '</div>';
 }
 
+var filterAuth = 'all';
 Views.auth = { render: function(root){
   var orders = (SH.S.orders||[]).slice();
   /* 已移入配件库的自设模型：在配件库里管理，这里不再显示 */
@@ -72,9 +73,27 @@ Views.auth = { render: function(root){
     '</div>';
   }
 
+  /* 顶部分类切换：全部 / 未授权 / 已授权 */
+  var showAuthed = (filterAuth==='all' || filterAuth==='authed');
+  var showUnauth = (filterAuth==='all' || filterAuth==='unauth');
+  var body = '';
+  if(list.length===0){
+    body = '<div class="clay-card"><p class="empty">还没有自设模型。点右上角「添加自设模型」把做好的模型收进来吧～</p></div>';
+  } else {
+    if(showAuthed) body += section('已授权', '已收费 ¥'+authed.reduce(function(s,o){return s+(+o.authFee||0);},0), authed, 'authed');
+    if(showUnauth) body += section('未授权', making?('制作中 '+making+' · 待授权 '+unpaid):'', unauthed, 'unauth');
+    /* 当前分类下没有模型（比如切到「已授权」但还没授权过） */
+    if((showAuthed?authed.length:0)+(showUnauth?unauthed.length:0)===0){
+      body = '<div class="clay-card"><p class="empty">该分类下暂时没有模型～</p></div>';
+    }
+  }
+
   root.innerHTML =
   '<div class="vhead">'+SH.icon('tag')+'<h2>授权</h2>'+
   '<div class="right"><button class="clay-btn mini" onclick="Views.order.addSelf()">'+SH.icon('plus','white')+'添加自设模型</button></div></div>'+
+  '<div class="seg">'+
+    ['all','unauth','authed'].map(function(f){ return '<button class="'+(filterAuth===f?'on':'')+'" onclick="Views.auth.setFilterAuth(\''+f+'\')">'+(f==='all'?'全部':f==='unauth'?'未授权':'已授权')+'</button>'; }).join('')+
+  '</div>'+
   '<div class="grid2" style="margin-bottom:16px">'+
     '<div class="stat"><div class="v" style="color:var(--ac-d)">'+authed.length+'</div><div class="l">已授权</div></div>'+
     '<div class="stat"><div class="v" style="color:var(--gr-d)">'+unpaid+'</div><div class="l">待授权</div></div>'+
@@ -82,11 +101,11 @@ Views.auth = { render: function(root){
     '<div class="stat"><div class="v">'+list.length+'</div><div class="l">自设总数</div></div>'+
   '</div>'+
   '<div class="clay-card sm"><p class="hint">这里汇集<b>自设的模型</b>（不算接单）。上传展示图、勾选已发布的平台，授权拿到钱后点「标记授权」即可转粉色（已授权）。授权收入会自动计入首页的<b>本月收入</b>。已收进配件库的自设模型会自动从这里移出。</p></div>'+
-  section('已授权', '已收费 ¥'+authed.reduce(function(s,o){return s+(+o.authFee||0);},0), authed, 'authed')+
-  section('未授权', making?('制作中 '+making+' · 待授权 '+unpaid):'', unauthed, 'unauth')+
-  (list.length===0 ? '<div class="clay-card"><p class="empty">还没有自设模型。点右上角「添加自设模型」把做好的模型收进来吧～</p></div>' : '')+
+  body +
   '<div class="clay-card sm"><p class="hint">'+SH.icon('chat')+' 跟 '+SH.esc(SH.vName())+' 说「自设了个OC，发小红书了」会自动建一张；说「XX 授权了，到手 800」会自动记收入并转粉色。</p></div>';
 },
+
+setFilterAuth: function(f){ filterAuth = f; SH.refresh(); },
 
 toggleShare: function(id, plat, el){
   var o = (SH.S.orders||[]).filter(function(x){return x.id===id;})[0];
