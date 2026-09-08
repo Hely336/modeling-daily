@@ -183,19 +183,24 @@ select.clay-input{appearance:none;}
 .bar>i{display:block;height:100%;border-radius:99px;background:var(--ac);transition:width .4s;}
 
 /* 弹窗 */
-/* 注意：iOS PWA(添加到主屏幕)下，遮罩不能用 backdrop-filter，否则会吞掉弹窗输入框焦点、弹不出键盘、无法打字。改用纯半透明背景。
-   关键修复：遮罩本身 overflow:hidden 不要滚动！否则 iOS 会错误地尝试滚动这个 position:fixed 的遮罩(它滚不动)，
-   判定“无法把输入框滚进视口”→ 不弹键盘。让 #modal 作为唯一可滚祖先(overflow-y:auto)，iOS 才会正确滚动 modal 露出输入框。 */
-#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;overflow:hidden;}
-#overlay.show{display:flex;}
-@media(min-width:768px){#overlay.show{align-items:center;}}
+/* iOS PWA(添加到主屏幕 standalone)键盘修复（核心）：
+   输入框若位于 position:fixed 且不可滚动(overflow:hidden)的祖先内，iOS 找不到可把输入框滚入视口的滚动容器，
+   会判定“无法聚焦”→ 直接不弹键盘、无法打字（浏览器正常、独立模式才坏，正是本 bug 的表现）。
+   修复：让遮罩 #overlay 本身成为「唯一可滚动祖先」——position:fixed + overflow-y:auto，
+   modal 不再独立滚动(去掉自身 overflow/max-height)，交由遮罩滚动把输入框露出，iOS 才会正常弹键盘并允许输入。
+   遮罩仍不能用 backdrop-filter（会吞焦点），只用纯半透明背景。 */
+#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+#overlay.show{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;}
 #modal{
-  background:var(--bg); width:100%; max-width:480px;
+  background:var(--bg); width:100%; max-width:480px; margin:auto auto 0;
   border-radius:24px 24px 0 0; box-shadow:var(--sh-lg);
   padding:24px 22px calc(24px + env(safe-area-inset-bottom));
-  max-height:86vh; overflow-y:auto; animation:slideup .25s ease-out;
+  animation:slideup .25s ease-out;
 }
-@media(min-width:768px){#modal{border-radius:24px;}}
+@media(min-width:768px){
+  #overlay.show{justify-content:center;align-items:center;}
+  #modal{margin:auto;border-radius:24px;}
+}
 @keyframes slideup{from{transform:translateY(50px);opacity:0;}to{transform:none;opacity:1;}}
 #modal h3{font-size:18px;margin-bottom:14px;font-weight:600;}
 .mrow{margin-bottom:12px;}
