@@ -62,7 +62,8 @@ body{
 h1,h2,h3,h4{color:var(--p700); font-weight:600; margin:0;}
 p{margin:0;}
 button{font-family:inherit; border:0; cursor:pointer; background:none; color:inherit;}
-input,select,textarea{font-family:inherit; font-size:15px; color:var(--p700); -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; touch-action:manipulation;}
+/* iOS 专属：输入框 font-size 必须 >=16px，否则 iOS 会自动缩放页面，在“添加到主屏幕”的 standalone 模式下会导致输入框失焦、弹不出键盘 */
+input,select,textarea{font-family:inherit; font-size:16px; color:var(--p700); -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; touch-action:manipulation;}
 ::placeholder{color:var(--p300);}
 @media(prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important;}}
 
