@@ -308,10 +308,9 @@ function fitChat(){
   document.body.classList.toggle('kb-open', open);
 }
 
-/* iOS(含添加到主屏幕 standalone 模式)键盘修复：
-   输入框若位于固定遮罩 #modal 内，聚焦时 iOS 不会自动把输入框滚进可视区，导致不弹键盘。
-   这里手动滚动：用 Safari 专属 scrollIntoViewIfNeeded 把输入框滚进可视区，并兜底重新 focus，
-   强制 iOS 弹出软键盘。遮罩 #overlay 已改为 overflow:hidden(不滚动)，#modal 是唯一可滚祖先。 */
+/* iOS PWA(添加到主屏幕 standalone)键盘修复：
+   真凶是输入框上的 touch-action:manipulation(会拦截 iOS 原生键盘弹起,见 coder/xum PR#372)，已在 CSS 改为 touch-action:auto。
+   这里仅做滚动兜底 + touchstart 同步预聚焦。 */
 function bindInputFocus(){
   function reveal(){
     var el = document.activeElement;
@@ -322,11 +321,18 @@ function bindInputFocus(){
       if(el.scrollIntoViewIfNeeded){ el.scrollIntoViewIfNeeded(true); }
       else { el.scrollIntoView({block:'center', behavior:'smooth'}); }
     }catch(_){}
-    /* iOS 兜底：确保输入框保持聚焦，触发键盘弹起 */
-    try{ el.focus({preventScroll:false}); }catch(_){ try{ el.focus(); }catch(__){} }
+    /* 注意：绝不在 focusin(异步)里再次调用 el.focus()——iOS WKWebView(PWA)会拦截异步 focus，导致键盘不弹；只滚动即可 */
   }
   document.addEventListener('focusin', function(){ setTimeout(reveal, 150); });
-  /* 点击输入框也兜底处理一次（部分 iOS 版本 focusin 不触发） */
+  /* 用户手势内同步预聚焦：touchstart 阶段 preventScroll 聚焦，避免 iOS 自动滚动破坏固定布局，
+     且符合 iOS PWA 键盘要求(必须来自同步的用户手势)。这是 iOS PWA 输入框弹键盘的关键兜底。 */
+  document.addEventListener('touchstart', function(e){
+    var el = e.target;
+    if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT' || el.isContentEditable)){
+      try{ el.focus({preventScroll:true}); }catch(_){}
+    }
+  }, true);
+  /* 点击输入框兜底处理一次（部分 iOS 版本 focusin 不触发） */
   document.addEventListener('click', function(e){
     var el = e.target;
     if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT' || el.isContentEditable)){
@@ -348,7 +354,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20260908b';
+    var APP_VER = '20260908c';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
