@@ -293,28 +293,37 @@ function fitChat(){
   if(!content) return;
   var vv = window.visualViewport;
   if(SH.cur!=='chat'){
-    /* 离开聊天页：清除内联样式，恢复普通文档流，其他页面可正常滚动 */
-    content.style.position=''; content.style.top=''; content.style.left='';
-    content.style.right=''; content.style.bottom=''; content.style.height=''; content.style.margin='';
+    /* 离开聊天页：清除键盘态，恢复普通文档流 */
+    document.body.classList.remove('kb-open');
+    document.documentElement.style.setProperty('--kb','0px');
     return;
   }
+  /* 聊天页不再使用 position:fixed。改为普通文档流，iOS 聚焦输入框时才能滚动整页把输入框抬到键盘上方；
+     否则 standalone(添加到主屏幕)模式下固定容器无法滚动，iOS 不弹软键盘。这里仅：键盘弹起时隐藏底部导航、记录键盘高度。 */
   var h = vv ? vv.height : window.innerHeight;
   var top = vv ? vv.offsetTop : 0;
   var gap = Math.max(0, window.innerHeight - h - top);
   var open = gap > 60;
-  var tabH = (document.getElementById('tabbar')||{offsetHeight:0}).offsetHeight || 0;
-  content.style.position = 'fixed';
-  content.style.top = top + 'px';
-  content.style.left = '0';
-  content.style.right = '0';
-  content.style.bottom = 'auto';
-  content.style.height = (open ? h : (h - tabH)) + 'px';
-  content.style.margin = '0 auto';
   document.documentElement.style.setProperty('--kb', open ? gap+'px' : '0px');
   document.body.classList.toggle('kb-open', open);
-  if(open){
-    setTimeout(function(){ var log=document.getElementById('chatlog'); if(log) log.scrollTop=log.scrollHeight; }, 60);
+}
+
+/* iOS(含添加到主屏幕 standalone 模式)键盘修复：
+   输入框若位于固定遮罩 #overlay / #modal 内，聚焦时 iOS 不会自动把输入框滚进可视区，导致不弹键盘。
+   这里手动 scrollIntoView，触发 iOS 滚动可滚祖先(#modal 是 overflow-y:auto)，从而弹出键盘。
+   聊天页输入框在普通文档流中，iOS 会自动滚动整页，无需处理。 */
+function bindInputFocus(){
+  function reveal(){
+    var el = document.activeElement;
+    if(!el || (el.tagName!=='INPUT' && el.tagName!=='TEXTAREA' && el.tagName!=='SELECT')) return;
+    var modal = document.getElementById('modal');
+    if(modal && modal.contains(el)){
+      try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(_){}
+    }
   }
+  document.addEventListener('focusin', function(){ setTimeout(reveal, 200); });
+  var vv = window.visualViewport;
+  if(vv) vv.addEventListener('resize', function(){ setTimeout(reveal, 50); });
 }
 function bindViewport(){
   var vv = window.visualViewport;
@@ -328,6 +337,7 @@ SH.init = function(){
   SH.ensureApis();
   renderNav();
   bindViewport();
+  bindInputFocus();
   SH.go('home');
   if(window.Victor) Victor.start();
   setInterval(function(){
