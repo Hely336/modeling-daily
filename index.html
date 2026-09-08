@@ -181,8 +181,10 @@ select.clay-input{appearance:none;}
 .bar>i{display:block;height:100%;border-radius:99px;background:var(--ac);transition:width .4s;}
 
 /* 弹窗 */
-/* 注意：iOS PWA(添加到主屏幕)下，遮罩不能用 backdrop-filter，否则会吞掉弹窗输入框焦点、弹不出键盘、无法打字。改用纯半透明背景。 */
-#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;overflow-y:auto;}
+/* 注意：iOS PWA(添加到主屏幕)下，遮罩不能用 backdrop-filter，否则会吞掉弹窗输入框焦点、弹不出键盘、无法打字。改用纯半透明背景。
+   关键修复：遮罩本身 overflow:hidden 不要滚动！否则 iOS 会错误地尝试滚动这个 position:fixed 的遮罩(它滚不动)，
+   判定“无法把输入框滚进视口”→ 不弹键盘。让 #modal 作为唯一可滚祖先(overflow-y:auto)，iOS 才会正确滚动 modal 露出输入框。 */
+#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;overflow:hidden;}
 #overlay.show{display:flex;}
 @media(min-width:768px){#overlay.show{align-items:center;}}
 #modal{
@@ -540,18 +542,18 @@ body.kb-open #tabbar{transform:translateY(110%);}
   </div>
 </div>
 
-<script src="js/core.js?v=13"></script>
-<script src="js/data.js?v=5"></script>
-<script src="js/victor.js?v=13"></script>
-<script src="js/view-home.js?v=16"></script>
-<script src="js/view-order.js?v=7"></script>
-<script src="js/view-accessory.js?v=4"></script>
-<script src="js/view-auth.js?v=4"></script>
-<script src="js/view-calendar.js?v=9"></script>
-<script src="js/view-idea.js?v=1"></script>
-<script src="js/view-money.js?v=5"></script>
-<script src="js/view-focus.js?v=5"></script>
-<script src="js/view-settings.js?v=8"></script>
+<script src="js/core.js?v=20"></script>
+<script src="js/data.js?v=20"></script>
+<script src="js/victor.js?v=20"></script>
+<script src="js/view-home.js?v=20"></script>
+<script src="js/view-order.js?v=20"></script>
+<script src="js/view-accessory.js?v=20"></script>
+<script src="js/view-auth.js?v=20"></script>
+<script src="js/view-calendar.js?v=20"></script>
+<script src="js/view-idea.js?v=20"></script>
+<script src="js/view-money.js?v=20"></script>
+<script src="js/view-focus.js?v=20"></script>
+<script src="js/view-settings.js?v=20"></script>
 <script>
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(function(reg){
