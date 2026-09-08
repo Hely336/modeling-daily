@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>建模日常 · 数据恢复</title>
+<style>
+  body{font-family:-apple-system,system-ui,"PingFang SC","Microsoft YaHei",sans-serif;background:#eef1f6;color:#2b2f36;margin:0;padding:22px;line-height:1.6}
+  h1{font-size:20px;margin:0 0 6px}
+  .box{background:#fff;border-radius:14px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,.08);margin:14px 0;max-width:680px}
+  textarea{width:100%;height:200px;font-family:monospace;font-size:12px;border:1px solid #ccd3e0;border-radius:8px;padding:10px;box-sizing:border-box}
+  button{background:#5a6acf;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:14px;margin:8px 8px 0 0;cursor:pointer}
+  a button{text-decoration:none}
+  .hint{color:#667;font-size:13px}
+  code{background:#eef;padding:1px 5px;border-radius:4px;word-break:break-all}
+  b{color:#2b2f36}
+</style>
+</head>
+<body>
+<h1>建模日常 · 数据恢复工具</h1>
+<div id="app"></div>
+<script>
+(function(){
+  var KEY='starhub_order_v1';
+  var app=document.getElementById('app');
+  var importMode=/[?&]import=1/.test(location.search);
+  if(importMode){
+    app.innerHTML='<div class="box"><h2 style="margin-top:0">粘贴备份，恢复到本地址</h2>'+
+      '<p class="hint">把在旧地址导出的 JSON 文本粘贴到下面，点「恢复」即可写入<b>当前地址</b>的本地存储。</p>'+
+      '<textarea id="ta" placeholder="在此粘贴备份 JSON"></textarea>'+
+      '<div><button onclick="doImport()">恢复到本地址</button></div>'+
+      '<p id="msg" class="hint"></p></div>'+
+      '<div class="box"><p class="hint">恢复后，回到应用主页（本地址根路径）刷新即可看到数据。</p></div>';
+    window.doImport=function(){
+      var v=document.getElementById('ta').value.trim();
+      try{ var obj=JSON.parse(v); if(!obj||typeof obj!=='object') throw 0;
+        localStorage.setItem(KEY, v);
+        document.getElementById('msg').textContent='✅ 已恢复 '+Object.keys(obj).length+' 个数据字段，回到应用主页刷新即可。';
+      }catch(e){ document.getElementById('msg').textContent='❌ 内容不是有效的备份 JSON，请检查后重试。'; }
+    };
+    return;
+  }
+  var raw=localStorage.getItem(KEY);
+  if(!raw){
+    app.innerHTML='<div class="box"><p>当前地址的本地存储里<b>没有数据</b>（可能从未在此存过，或已清空）。</p>'+
+      '<p class="hint">要找回旧数据，请用<strong>同一个浏览器</strong>打开你的<strong>旧地址</strong>，再打开本恢复页。</p></div>';
+    return;
+  }
+  var dl='data:application/json;charset=utf-8,'+encodeURIComponent(raw);
+  app.innerHTML='<div class="box"><p>✅ 检测到本地数据（'+raw.length+' 字符）。请<b>下载</b>或<b>复制</b>，再到<strong>新地址</strong>的恢复页粘贴恢复。</p>'+
+    '<a href="'+dl+'" download="starhub-backup.json"><button>⬇ 下载备份文件</button></a>'+
+    '<button onclick="copyData()">📋 复制备份文本</button>'+
+    '<p id="msg" class="hint"></p></div>'+
+    '<div class="box"><p class="hint">恢复步骤：打开<strong>新地址</strong>的 <code>recover.html?import=1</code>（即新地址根路径后加 /recover.html?import=1），把上面下载的文件内容或复制的文本粘贴进去，点「恢复」。</p>'+
+    '<details><summary>先看看数据内容</summary><textarea readonly>'+raw.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</textarea></details></div>';
+  window.copyData=function(){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(raw).then(function(){document.getElementById('msg').textContent='✅ 已复制到剪贴板';},
+        function(){document.getElementById('msg').textContent='复制失败，请手动选择上方文本复制';});
+    } else {
+      var ta=document.createElement('textarea');ta.value=raw;document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');document.getElementById('msg').textContent='✅ 已复制到剪贴板';}catch(e){document.getElementById('msg').textContent='复制失败，请手动复制';}
+      document.body.removeChild(ta);
+    }
+  };
+})();
+</script>
+</body>
+</html>
