@@ -324,12 +324,12 @@ function bindInputFocus(){
     /* 注意：绝不在 focusin(异步)里再次调用 el.focus()——iOS WKWebView(PWA)会拦截异步 focus，导致键盘不弹；只滚动即可 */
   }
   document.addEventListener('focusin', function(){ setTimeout(reveal, 150); });
-  /* 用户手势内同步预聚焦：touchstart 阶段 preventScroll 聚焦，避免 iOS 自动滚动破坏固定布局，
-     且符合 iOS PWA 键盘要求(必须来自同步的用户手势)。这是 iOS PWA 输入框弹键盘的关键兜底。 */
+  /* 用户手势内同步预聚焦：touchstart 阶段同步调用 focus()(必须来自同步的用户手势，iOS standalone 才肯弹键盘)。
+     不再用 preventScroll:true——遮罩已改为可滚动祖先，交给 iOS 原生把输入框滚入视口即可，否则会压制自动滚动。 */
   document.addEventListener('touchstart', function(e){
     var el = e.target;
     if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT' || el.isContentEditable)){
-      try{ el.focus({preventScroll:true}); }catch(_){}
+      try{ el.focus(); }catch(_){}
     }
   }, true);
   /* 点击输入框兜底处理一次（部分 iOS 版本 focusin 不触发） */
@@ -354,7 +354,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20260908c';
+    var APP_VER = '20260908d';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
