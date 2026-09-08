@@ -1,13 +1,13 @@
 {
-  "name": "建模接单",
-  "short_name": "建模接单",
-  "description": "建模接单记录 · 收费 / 排单 / 修改次数 / 结单，日历显示用时日长与 Deadline",
-  "start_url": "/",
+  "name": "建模日常",
+  "short_name": "建模日常",
+  "description": "建模日常 · 接单排单 / 自设授权 / 配件库 / 创意灵感，日历显示用时日长与 Deadline",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#e0e5ec",
   "theme_color": "#e0e5ec",
-  "scope": "/",
+  "scope": "./",
   "lang": "zh-CN",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
