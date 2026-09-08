@@ -309,19 +309,30 @@ function fitChat(){
 }
 
 /* iOS(含添加到主屏幕 standalone 模式)键盘修复：
-   输入框若位于固定遮罩 #overlay / #modal 内，聚焦时 iOS 不会自动把输入框滚进可视区，导致不弹键盘。
-   这里手动 scrollIntoView，触发 iOS 滚动可滚祖先(#modal 是 overflow-y:auto)，从而弹出键盘。
-   聊天页输入框在普通文档流中，iOS 会自动滚动整页，无需处理。 */
+   输入框若位于固定遮罩 #modal 内，聚焦时 iOS 不会自动把输入框滚进可视区，导致不弹键盘。
+   这里手动滚动：用 Safari 专属 scrollIntoViewIfNeeded 把输入框滚进可视区，并兜底重新 focus，
+   强制 iOS 弹出软键盘。遮罩 #overlay 已改为 overflow:hidden(不滚动)，#modal 是唯一可滚祖先。 */
 function bindInputFocus(){
   function reveal(){
     var el = document.activeElement;
-    if(!el || (el.tagName!=='INPUT' && el.tagName!=='TEXTAREA' && el.tagName!=='SELECT')) return;
-    var modal = document.getElementById('modal');
-    if(modal && modal.contains(el)){
-      try{ el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(_){}
-    }
+    if(!el) return;
+    var t = el.tagName;
+    if(t!=='INPUT' && t!=='TEXTAREA' && t!=='SELECT' && !el.isContentEditable) return;
+    try{
+      if(el.scrollIntoViewIfNeeded){ el.scrollIntoViewIfNeeded(true); }
+      else { el.scrollIntoView({block:'center', behavior:'smooth'}); }
+    }catch(_){}
+    /* iOS 兜底：确保输入框保持聚焦，触发键盘弹起 */
+    try{ el.focus({preventScroll:false}); }catch(_){ try{ el.focus(); }catch(__){} }
   }
-  document.addEventListener('focusin', function(){ setTimeout(reveal, 200); });
+  document.addEventListener('focusin', function(){ setTimeout(reveal, 150); });
+  /* 点击输入框也兜底处理一次（部分 iOS 版本 focusin 不触发） */
+  document.addEventListener('click', function(e){
+    var el = e.target;
+    if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT' || el.isContentEditable)){
+      setTimeout(reveal, 150);
+    }
+  }, true);
   var vv = window.visualViewport;
   if(vv) vv.addEventListener('resize', function(){ setTimeout(reveal, 50); });
 }
@@ -333,6 +344,23 @@ function bindViewport(){
   fitChat();
 }
 
+/* 版本自更新：每次启动拉取 version.json，与内置版本比对，不一致则自动重载，
+   从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
+SH.checkUpdate = function(){
+  try{
+    var APP_VER = '20260908b';
+    fetch('version.json?t=' + Date.now(), {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j && j.v && j.v !== APP_VER){
+          var tried = sessionStorage.getItem('sh_upd_tried');
+          if(!tried){ sessionStorage.setItem('sh_upd_tried','1'); location.reload(true); }
+        }
+      })
+      .catch(function(){});
+  }catch(_){}
+};
+
 SH.init = function(){
   SH.ensureApis();
   renderNav();
@@ -340,6 +368,18 @@ SH.init = function(){
   bindInputFocus();
   SH.go('home');
   if(window.Victor) Victor.start();
+  /* 监听新版 Service Worker 推送的更新消息，自动重载 */
+  try{
+    if(navigator.serviceWorker){
+      navigator.serviceWorker.addEventListener('message', function(ev){
+        if(ev.data && ev.data.type==='UPDATE'){
+          var tried = sessionStorage.getItem('sh_upd_tried');
+          if(!tried){ sessionStorage.setItem('sh_upd_tried','1'); location.reload(true); }
+        }
+      });
+    }
+  }catch(_){}
+  SH.checkUpdate();
   setInterval(function(){
     var el = document.getElementById('bjclock');
     if(el) el.textContent = SH.hm();
