@@ -182,7 +182,7 @@ select.clay-input{appearance:none;}
 
 /* 弹窗 */
 /* 注意：iOS PWA(添加到主屏幕)下，遮罩不能用 backdrop-filter，否则会吞掉弹窗输入框焦点、弹不出键盘、无法打字。改用纯半透明背景。 */
-#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+#overlay{position:fixed;inset:0;background:rgba(40,46,58,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;overflow-y:auto;}
 #overlay.show{display:flex;}
 @media(min-width:768px){#overlay.show{align-items:center;}}
 #modal{
@@ -213,14 +213,15 @@ select.clay-input{appearance:none;}
   flex:1 1 auto; min-height:0;
 }
 @media(min-width:768px){.chatwrap{height:calc(100vh - 116px); height:calc(100dvh - 116px);}}
-body.chat-page{overflow:hidden;}
+/* 聊天页改为普通文档流（不再锁死 overflow/固定高度）：iOS 聚焦输入框时才能滚动整页把输入框抬到键盘上方。
+   若仍用 position:fixed + overflow:hidden，添加到主屏幕(standalone)模式下 iOS 无法滚动固定容器，键盘不弹。 */
+body.chat-page{overflow:visible;}
 body.chat-page #content{
   display:flex; flex-direction:column;
-  height:calc(100vh - var(--tabh));
-  height:calc(100dvh - var(--tabh));
+  min-height:calc(100vh - var(--tabh));
+  min-height:calc(100dvh - var(--tabh));
   max-width:760px; margin:0 auto; width:100%;
-  padding:14px 16px 6px;
-  overflow:hidden;
+  padding:14px 16px calc(12px + env(safe-area-inset-bottom));
 }
 @media(min-width:768px){ body.chat-page #content{ height:100vh; height:100dvh; max-width:980px; } }
 body.chat-page .vhead{ flex:none; }
