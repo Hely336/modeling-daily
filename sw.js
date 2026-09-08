@@ -1,5 +1,5 @@
 /* 建模日常 Service Worker — 离线缓存核心资源（相对路径，兼容 GitHub Pages 子路径部署） */
-const CACHE_NAME = 'starhub-order-v19';
+const CACHE_NAME = 'starhub-order-v20';
 const PRECACHE = [
   './',
   './index.html',
@@ -33,9 +33,15 @@ self.addEventListener('activate', function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
       return Promise.all(keys.filter(function(k){ return k !== CACHE_NAME; }).map(function(k){ return caches.delete(k); }));
+    }).then(function(){
+      return self.clients.claim();
+    }).then(function(){
+      /* 新版本激活后，通知所有受控窗口(含旧页面)自动重载，避免 iOS standalone 不更新 */
+      return self.clients.matchAll({type:'window', includeUncontrolled:true}).then(function(cls){
+        cls.forEach(function(c){ try{ c.postMessage({type:'UPDATE'}); }catch(_){} });
+      });
     })
   );
-  self.clients.claim();
 });
 
 /* 网络优先 + 缓存兜底：保证每次改版都能立刻看到新界面，断网时仍可用 */
