@@ -35,7 +35,7 @@ function card(o, num){
   }
   var catBadge = o.category ? '<span class="pill pill-cat">'+SH.esc(o.category)+'</span>' : '';
   var shareHtml = SH.modelShareHtml(o);
-  var picHtml = o.pic ? '<img src="'+o.pic+'" onclick="Views.order.big(\''+o.id+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:16px;flex:0 0 auto;cursor:pointer">' : '';
+  var picHtml = o.pic ? '<img '+SH.picAttr(o.pic)+' onclick="Views.order.big(\''+o.id+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:16px;flex:0 0 auto;cursor:pointer">' : '';
   var leftTxt = '';
   if(!done && left!=null) leftTxt = left<0 ? '逾期 '+(-left)+' 天' : (left===0 ? '今天到期' : '剩 '+left+' 天');
   var pc = done ? (paid ? 'pcard paid' : 'pcard unpaid') : 'pcard';
@@ -162,7 +162,7 @@ edit: function(id, lock){
   '</div>'+
   '<div class="mrow"><label>模型图片</label>'+
     '<div id="od_picbox" style="display:flex;align-items:center;gap:10px">'+
-      (o&&o.pic?'<img src="'+o.pic+'" style="width:56px;height:56px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
+      (o&&o.pic?'<img '+SH.picAttr(o.pic)+' style="width:56px;height:56px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
       '<label class="clay-btn mini" style="cursor:pointer">上传<input id="od_pic" type="file" accept="image/*" style="display:none" onchange="Views.order.pick(event)"></label>'+
     '</div></div>'+
   '<div id="od_date_box"><div class="grid2">'+
@@ -318,14 +318,16 @@ pick: function(ev){
   if(!f) return;
   SH.compressImg(f, 800, function(d){
     pendingPic = d;
-    document.getElementById('od_picbox').innerHTML =
-      '<img src="'+d+'" style="width:56px;height:56px;object-fit:cover;border-radius:14px">'+
+    var box = document.getElementById('od_picbox');
+    box.innerHTML =
+      '<img '+SH.picAttr(d)+' style="width:56px;height:56px;object-fit:cover;border-radius:14px">'+
       '<label class="clay-btn mini" style="cursor:pointer">重传<input id="od_pic" type="file" accept="image/*" style="display:none" onchange="Views.order.pick(event)"></label>';
+    SH.resolveImgs(box);
   });
 },
 /* 大图查看 */
 big: function(id){
   var o = getOrders().filter(function(x){return x.id===id;})[0];
-  if(o && o.pic) SH.modal('<img src="'+o.pic+'" style="width:100%;border-radius:16px">');
+  if(o && o.pic) SH.modal('<img '+SH.picAttr(o.pic)+' style="width:100%;border-radius:16px">');
 }};
 })();
