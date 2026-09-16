@@ -32,7 +32,7 @@ Views.money = { render: function(root){
 
   '<div class="clay-card"><div class="sect" style="margin-top:0">账单明细</div>'+
   (S.expenses.length ? S.expenses.slice().reverse().slice(0,40).map(function(x){
-    return '<div class="row">'+(x.img?'<img src="'+x.img+'" style="width:38px;height:38px;border-radius:12px;object-fit:cover">':'<span style="font-size:17px">'+x.cat.split(' ')[1]+'</span>')+
+    return '<div class="row">'+(x.img?'<img '+SH.picAttr(x.img)+' style="width:38px;height:38px;border-radius:12px;object-fit:cover">':'<span style="font-size:17px">'+x.cat.split(' ')[1]+'</span>')+
     '<div class="grow"><b style="color:var(--p700)">'+SH.esc(x.note||x.cat.split(' ')[0])+'</b><div class="sub">'+x.date+' · '+x.cat.split(' ')[0]+(x.img?' · 截图识别':'')+'</div></div>'+
     '<b style="color:var(--p600)">-¥'+x.amount.toFixed(2)+'</b>'+
     '<button onclick="Views.money.del(\''+x.id+'\')">'+SH.icon('trash')+'</button></div>';
@@ -58,7 +58,7 @@ shot: function(input){
 },
 confirm: function(amt, note){
   SH.modal('<h3>确认账单</h3>'+
-  '<img src="'+pendingShot+'" style="width:100%;max-height:180px;object-fit:contain;border-radius:16px;margin-bottom:12px;background:var(--bg);box-shadow:var(--sh-in-s);padding:8px">'+
+  '<img '+SH.picAttr(pendingShot)+' style="width:100%;max-height:180px;object-fit:contain;border-radius:16px;margin-bottom:12px;background:var(--bg);box-shadow:var(--sh-in-s);padding:8px">'+
   '<div class="grid2"><div class="mrow"><label>金额 ¥</label><input class="clay-input" id="ex_a" type="number" value="'+(amt||'')+'" placeholder="0.00"></div>'+
   '<div class="mrow"><label>分类</label><select class="clay-input" id="ex_c">'+CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div></div>'+
   '<div class="mrow"><label>备注</label><input class="clay-input" id="ex_n" value="'+SH.esc(note)+'" placeholder="如：一点点奶茶"></div>'+
@@ -83,6 +83,8 @@ save: function(withImg){
   if(amt >= 200) Victor.post('刚记了一笔 ¥'+amt.toFixed(2)+'？嗯……不小的一笔，买得开心就好，但这个月的预算我可帮你盯着呢。');
 },
 del: function(id){
+  var ex = SH.S.expenses.filter(function(x){return x.id===id;})[0];
+  if(ex) SH.delPic(ex.img);
   SH.S.expenses = SH.S.expenses.filter(function(x){return x.id!==id;});
   SH.save(); SH.refresh();
 }};
