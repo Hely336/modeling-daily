@@ -56,7 +56,7 @@ Views.home = { render: function(root){
     var feeTxt = isSelf ? (o.authorized?'已授权':'待授权') : ('¥'+(+o.fee||0));
     return '<div class="row" style="cursor:pointer" onclick="Views.order.edit(\''+o.id+'\')">'+
       '<span class="seq">'+(num||'')+'</span>'+
-      (o.pic?'<img src="'+o.pic+'" style="width:40px;height:40px;object-fit:cover;border-radius:12px;flex:0 0 auto">':'<span style="font-size:17px">'+SH.icon('cube')+'</span>')+
+      (o.pic?'<img '+SH.picAttr(o.pic)+' style="width:40px;height:40px;object-fit:cover;border-radius:12px;flex:0 0 auto">':'<span style="font-size:17px">'+SH.icon('cube')+'</span>')+
       '<div class="grow"><b style="color:var(--p700)">'+SH.esc(o.name)+'</b> '+typePill+
       (o.category?'<span style="font-size:11px;padding:1px 7px;border-radius:99px;background:#eef0ff;color:#5a4bd6;margin-left:6px">'+SH.esc(o.category)+'</span>':'')+
       '<div class="sub">'+feeTxt+' · 修改 '+(o.rev||0)+' 次'+(used!=null?' · 已用 '+Math.max(0,used)+' 天':'')+'</div>'+
