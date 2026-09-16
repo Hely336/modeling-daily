@@ -67,6 +67,8 @@ button{font-family:inherit; border:0; cursor:pointer; background:none; color:inh
    touch-action:manipulation 加在 input 上会拦截 iOS 原生键盘弹起)。必须 touch-action:auto。 */
 input,select,textarea{font-family:inherit; font-size:16px; color:var(--p700); -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; touch-action:auto;}
 ::placeholder{color:var(--p300);}
+/* IndexedDB 图片占位：渲染时先给浅色背景，resolveImgs 异步填入真实图后自动显示，避免裂图图标 */
+img[data-idb]{background:var(--p50);}
 @media(prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important;}}
 
 /* ===== 布局：iPad 侧边栏 / iPhone 底部栏 ===== */
