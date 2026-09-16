@@ -54,7 +54,21 @@ function load(){
   }catch(e){ return defaults(); }
 }
 SH.S = load();
-SH.save = function(){ localStorage.setItem(DB, JSON.stringify(SH.S)); };
+SH.save = function(){
+  try{ localStorage.setItem(DB, JSON.stringify(SH.S)); return true; }
+  catch(e){
+    /* 配额超限：把 localStorage 里残留的 base64 图自动搬进 IndexedDB 腾出空间，再保存一次 */
+    if(e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014)){
+      SH.migrateImages(function(){
+        try{ localStorage.setItem(DB, JSON.stringify(SH.S)); SH.toast('已自动整理存储，保存成功 ✅'); }
+        catch(_){ SH.toast('存储空间仍不足：请到「设置」导出备份，或删除一些带图的旧单'); }
+      });
+    } else {
+      SH.toast('保存失败：'+(e&&e.message?e.message:'未知错误'));
+    }
+    return false;
+  }
+};
 /* 首次运行把预置的多个 API 账号（含 Key）写入 localStorage，省去手动填写；只 seed 一次，不覆盖用户已改的账号 */
 SH.ensureApis = function(){
   var SEED_APIS = [
@@ -244,6 +258,7 @@ SH.moreSheet = function(){
 /* ---- 弹窗 / Toast ---- */
 SH.modal = function(html){
   document.getElementById('modal').innerHTML = html;
+  SH.resolveImgs(document.getElementById('modal'));
   document.getElementById('overlay').classList.add('show');
 };
 SH.closeModal = function(){ document.getElementById('overlay').classList.remove('show'); };
@@ -277,11 +292,80 @@ SH.compressImg = function(file, maxW, cb){
       var c = document.createElement('canvas');
       c.width = img.width*sc; c.height = img.height*sc;
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      cb(c.toDataURL('image/jpeg',0.72));
+      var dataUrl = c.toDataURL('image/jpeg',0.72);
+      /* 压缩后的图存进 IndexedDB，回调只返回 "idb:<id>" 引用，localStorage 不再塞 base64（避免配额爆掉无法保存） */
+      SH.imgPut(dataUrl).then(function(id){ cb(id ? 'idb:'+id : dataUrl); });
     };
     img.src = r.result;
   };
   r.readAsDataURL(file);
+};
+
+/* ---- 图片存储：IndexedDB ----
+   根因：localStorage 配额仅约 5MB；订单/配件/创意里存 base64 参考图会撑爆，导致 SH.save() 抛 QuotaExceededError、无法保存。
+   方案：图片二进制存 IndexedDB（容量数百 MB），localStorage 只保留 "idb:<id>" 引用。 */
+var _idb = null;
+function _idbOpen(cb){
+  if(_idb){ cb(_idb); return; }
+  if(!window.indexedDB){ cb(null); return; }
+  try{
+    var req = indexedDB.open('starhub_order_imgs', 1);
+    req.onupgradeneeded = function(){ try{ req.result.createObjectStore('imgs'); }catch(e){} };
+    req.onsuccess = function(){ _idb = req.result; cb(_idb); };
+    req.onerror = function(){ cb(null); };
+  }catch(e){ cb(null); }
+}
+SH.imgPut = function(dataUrl){ return new Promise(function(res){
+  _idbOpen(function(db){ if(!db){ res(null); return; }
+    try{
+      var id = 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+      var tx = db.transaction('imgs','readwrite');
+      tx.objectStore('imgs').put(dataUrl, id);
+      tx.oncomplete = function(){ res(id); };
+      tx.onerror = function(){ res(null); };
+    }catch(e){ res(null); }
+  });
+}); };
+SH.imgGet = function(id){ return new Promise(function(res){
+  _idbOpen(function(db){ if(!db){ res(''); return; }
+    try{
+      var tx = db.transaction('imgs','readonly');
+      var rq = tx.objectStore('imgs').get(id);
+      rq.onsuccess = function(){ res(rq.result||''); };
+      rq.onerror = function(){ res(''); };
+    }catch(e){ res(''); }
+  });
+}); };
+SH.imgDel = function(id){ _idbOpen(function(db){ if(!db||!id) return; try{ db.transaction('imgs','readwrite').objectStore('imgs').delete(id); }catch(e){} }); };
+/* 渲染用：pic 为 idb: 引用时输出 data-idb 属性（由 SH.resolveImgs 异步从 IndexedDB 取图填入）；否则直接输出 src */
+SH.picAttr = function(pic){
+  if(pic && typeof pic==='string' && pic.indexOf('idb:')===0) return 'data-idb="'+SH.esc(pic.slice(4))+'"';
+  return 'src="'+(pic||'')+'"';
+};
+/* 渲染后调用：把页面里所有 img[data-idb] 的 src 从 IndexedDB 取出填入 */
+SH.resolveImgs = function(root){
+  if(!root || !root.querySelectorAll) return;
+  var imgs = root.querySelectorAll('img[data-idb]');
+  Array.prototype.forEach.call(imgs, function(img){
+    var id = img.getAttribute('data-idb');
+    if(!id) return;
+    SH.imgGet(id).then(function(d){ if(d) img.src = d; });
+  });
+};
+/* 删除带图条目时清掉 IndexedDB 里的图，避免孤儿数据膨胀 */
+SH.delPic = function(pic){ if(pic && typeof pic==='string' && pic.indexOf('idb:')===0) SH.imgDel(pic.slice(4)); };
+/* 首次启动迁移：把 localStorage 里残留的 base64 图搬进 IndexedDB，腾出配额，避免保存失败 */
+SH.migrateImages = function(cb){
+  try{
+    var lists = [SH.S.orders, SH.S.accessories, SH.S.ideas, SH.S.expenses];
+    var todo = [];
+    lists.forEach(function(arr){ if(!arr||!arr.length) return; arr.forEach(function(it){ if(it && typeof it.pic==='string' && it.pic.indexOf('data:')===0) todo.push(it); }); });
+    if(!todo.length){ if(cb) cb(); return; }
+    var n = 0;
+    todo.forEach(function(it){
+      SH.imgPut(it.pic).then(function(id){ if(id) it.pic = 'idb:'+id; n++; if(n>=todo.length){ if(cb) cb(); } });
+    });
+  }catch(e){ if(cb) cb(); }
 };
 
 /* ---- 启动 ---- */
@@ -357,7 +441,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20260908g';
+    var APP_VER = '20260916a';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
@@ -376,6 +460,8 @@ SH.init = function(){
   bindViewport();
   bindInputFocus();
   SH.go('home');
+  /* 首次启动把 localStorage 里残留的 base64 图搬进 IndexedDB 腾出配额，迁移完刷新一次让图片显示 */
+  SH.migrateImages(function(){ SH.refresh(); });
   if(window.Victor) Victor.start();
   /* 监听新版 Service Worker 推送的更新消息，自动重载 */
   try{
