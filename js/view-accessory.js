@@ -13,7 +13,7 @@ var editingId = null;   /* 当前正在编辑的配件 id（从模型选择时�
 function card(a){
   var catBadge = a.category ? '<span class="pill pill-cat">'+SH.esc(a.category)+'</span>' : '';
   var picHtml = a.pic
-    ? '<img class="accthumb" src="'+a.pic+'" onclick="Views.acc.big(\''+a.id+'\')" alt="'+SH.esc(a.name||'')+'">'
+    ? '<img class="accthumb" '+SH.picAttr(a.pic)+' onclick="Views.acc.big(\''+a.id+'\')" alt="'+SH.esc(a.name||'')+'">'
     : '<div class="accthumb ph" onclick="Views.acc.big(\''+a.id+'\')">'+SH.icon('box','lg')+'</div>';
   return '<div class="clay-card acccard">'+
     picHtml+
@@ -40,7 +40,7 @@ function renderForm(o){
   '<div class="mrow"><label>分类</label><select class="clay-input" id="ac_cat">'+catOpts+'</select></div>'+
   '<div class="mrow"><label>配件图片</label>'+
     '<div id="ac_picbox" style="display:flex;align-items:center;gap:10px">'+
-      (o.pic?'<img src="'+o.pic+'" style="width:64px;height:64px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
+      (o.pic?'<img '+SH.picAttr(o.pic)+' style="width:64px;height:64px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
       '<label class="clay-btn mini" style="cursor:pointer">上传<input id="ac_pic" type="file" accept="image/*" style="display:none" onchange="Views.acc.pick(event)"></label>'+
     '</div></div>'+
   '<div class="mrow"><label>备注</label><input class="clay-input" id="ac_note" value="'+SH.esc(o.note||'')+'" placeholder="如：含贴图、可做变形"></div>'+
@@ -85,7 +85,7 @@ pickFromModel: function(){
   if(!models.length){ SH.toast('还没有做好的模型可挑选'); return; }
   var items = models.map(function(o){
     var pic = o.pic
-      ? '<img src="'+o.pic+'" style="width:48px;height:48px;object-fit:cover;border-radius:12px;flex:0 0 auto">'
+      ? '<img '+SH.picAttr(o.pic)+' style="width:48px;height:48px;object-fit:cover;border-radius:12px;flex:0 0 auto">'
       : '<span style="width:48px;height:48px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--p50);box-shadow:var(--sh-in-s);color:var(--p300);font-size:10px;text-align:center">无图</span>';
     return '<button class="clay-card sm" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 10px;cursor:pointer" onclick="Views.acc.chooseModel(\''+o.id+'\')">'+pic+
       '<div class="grow"><b style="color:var(--p700);font-size:14px">'+SH.esc(o.name||'未命名模型')+'</b>'+
@@ -108,7 +108,7 @@ pick: function(ev){
   SH.compressImg(f, 800, function(d){
     pendingPic = d;
     document.getElementById('ac_picbox').innerHTML =
-      '<img src="'+d+'" style="width:64px;height:64px;object-fit:cover;border-radius:14px">'+
+      '<img '+SH.picAttr(d)+' style="width:64px;height:64px;object-fit:cover;border-radius:14px">'+
       '<label class="clay-btn mini" style="cursor:pointer">重传<input id="ac_pic" type="file" accept="image/*" style="display:none" onchange="Views.acc.pick(event)"></label>';
   });
 },
@@ -137,7 +137,7 @@ del: function(id){
 
 big: function(id){
   var a = id ? (getList().filter(function(x){return x.id===id;})[0]) : null;
-  if(a && a.pic) SH.modal('<img src="'+a.pic+'" style="width:100%;border-radius:16px">');
+  if(a && a.pic) SH.modal('<img '+SH.picAttr(a.pic)+' style="width:100%;border-radius:16px">');
   else SH.toast('这件配件还没有上传图片');
 }
 };
