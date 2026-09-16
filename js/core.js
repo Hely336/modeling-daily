@@ -223,6 +223,7 @@ SH.go = function(id){
   /* 聊天页锁住整页滚动，输入框始终可见 */
   document.body.classList.toggle('chat-page', id==='chat');
   if(Views[id]) Views[id].render(root);
+  SH.resolveImgs(root);
   renderNav();
   fitChat();
 };
@@ -441,7 +442,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20260916a';
+    var APP_VER = '20260916b';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
