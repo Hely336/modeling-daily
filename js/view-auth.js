@@ -16,7 +16,7 @@ function card(o){
   var sh = shareOf(o);
   var pc = (!isDone(o)) ? 'pcard' : (o.authorized ? 'pcard paid' : 'pcard unpaid');
   var pic = o.pic
-    ? '<img src="'+o.pic+'" onclick="Views.order.big(\''+o.id+'\')" style="width:64px;height:64px;object-fit:cover;border-radius:14px;flex:0 0 auto;cursor:pointer">'
+    ? '<img '+SH.picAttr(o.pic)+' onclick="Views.order.big(\''+o.id+'\')" style="width:64px;height:64px;object-fit:cover;border-radius:14px;flex:0 0 auto;cursor:pointer">'
     : '<div onclick="Views.order.edit(\''+o.id+'\')" style="width:64px;height:64px;border-radius:14px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--p50);box-shadow:var(--sh-in-s);color:var(--p300);font-size:11px;text-align:center;cursor:pointer">未传<br>展示图</div>';
   var plats = [['xhs','小红书'],['dy','抖音'],['xy','闲鱼']].map(function(m){
     return '<span class="shchk '+(sh[m[0]]?'on':'')+'" onclick="Views.auth.toggleShare(\''+o.id+'\',\''+m[0]+'\',this)">'+m[1]+'</span>';
