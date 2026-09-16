@@ -21,7 +21,7 @@ function card(d){
         : '<span class="ideasrc">'+SH.icon('tag','sm')+' '+SH.esc(d.src)+'</span>')
     : '';
   var picHtml = d.pic
-    ? '<img class="accthumb" src="'+d.pic+'" onclick="Views.idea.big(\''+d.id+'\')" alt="'+SH.esc(d.title||'')+'">'
+    ? '<img class="accthumb" '+SH.picAttr(d.pic)+' onclick="Views.idea.big(\''+d.id+'\')" alt="'+SH.esc(d.title||'')+'">'
     : '<div class="accthumb ph" onclick="Views.idea.big(\''+d.id+'\')">'+SH.icon('bulb','lg')+'</div>';
   return '<div class="clay-card acccard">'+
     picHtml+
@@ -80,7 +80,7 @@ edit: function(id){
   '<div class="mrow"><label>日期（默认今天）</label><input class="clay-input" id="id_date" type="date" value="'+SH.esc(d?(d.date||today):today)+'"></div>'+
   '<div class="mrow"><label>款式图片</label>'+
     '<div id="id_picbox" style="display:flex;align-items:center;gap:10px">'+
-      (d&&d.pic?'<img src="'+d.pic+'" style="width:64px;height:64px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
+      (d&&d.pic?'<img '+SH.picAttr(d.pic)+' style="width:64px;height:64px;object-fit:cover;border-radius:14px">':'<span class="hint">未上传</span>')+
       '<label class="clay-btn mini" style="cursor:pointer">上传图片<input id="id_pic" type="file" accept="image/*" style="display:none" onchange="Views.idea.pick(event)"></label>'+
     '</div>'+
     '<div style="margin-top:6px"><input class="clay-input" id="id_url" value="'+SH.esc(d&&d.pic&&isUrl(d.pic)?d.pic:'')+'" placeholder="或粘贴图片链接（小红书/抖音/闲鱼）" oninput="Views.idea.useUrl(this.value)"></div>'+
@@ -97,7 +97,7 @@ pick: function(ev){
     pendingPic = d;
     document.getElementById('id_url').value = '';
     document.getElementById('id_picbox').innerHTML =
-      '<img src="'+d+'" style="width:64px;height:64px;object-fit:cover;border-radius:14px">'+
+      '<img '+SH.picAttr(d)+' style="width:64px;height:64px;object-fit:cover;border-radius:14px">'+
       '<label class="clay-btn mini" style="cursor:pointer">重传<input id="id_pic" type="file" accept="image/*" style="display:none" onchange="Views.idea.pick(event)"></label>';
   });
 },
@@ -137,7 +137,7 @@ del: function(id){
 
 big: function(id){
   var d = id ? (getList().filter(function(x){return x.id===id;})[0]) : null;
-  if(d && d.pic) SH.modal('<img src="'+d.pic+'" style="width:100%;border-radius:16px">');
+  if(d && d.pic) SH.modal('<img '+SH.picAttr(d.pic)+' style="width:100%;border-radius:16px">');
   else SH.toast('这个款式还没有上传图片');
 }
 };
