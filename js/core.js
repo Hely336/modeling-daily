@@ -360,11 +360,11 @@ SH.migrateImages = function(cb){
   try{
     var lists = [SH.S.orders, SH.S.accessories, SH.S.ideas, SH.S.expenses];
     var todo = [];
-    lists.forEach(function(arr){ if(!arr||!arr.length) return; arr.forEach(function(it){ if(it && typeof it.pic==='string' && it.pic.indexOf('data:')===0) todo.push(it); }); });
+    lists.forEach(function(arr){ if(!arr||!arr.length) return; arr.forEach(function(it){ if(!it) return; var p = it.pic || it.img; if(typeof p==='string' && p.indexOf('data:')===0) todo.push(it); }); });
     if(!todo.length){ if(cb) cb(); return; }
     var n = 0;
     todo.forEach(function(it){
-      SH.imgPut(it.pic).then(function(id){ if(id) it.pic = 'idb:'+id; n++; if(n>=todo.length){ if(cb) cb(); } });
+      SH.imgPut(it.pic||it.img).then(function(id){ if(id){ if(it.pic && it.pic.indexOf('data:')===0) it.pic='idb:'+id; else if(it.img && it.img.indexOf('data:')===0) it.img='idb:'+id; } n++; if(n>=todo.length){ if(cb) cb(); } });
     });
   }catch(e){ if(cb) cb(); }
 };
@@ -442,7 +442,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20260916b';
+    var APP_VER = '20260922a';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
