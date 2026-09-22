@@ -1,5 +1,5 @@
 /* 建模日常 Service Worker — 离线缓存核心资源（相对路径，兼容 GitHub Pages 子路径部署） */
-const CACHE_NAME = 'starhub-order-v23';
+const CACHE_NAME = 'starhub-order-v24';
 const PRECACHE = [
   './',
   './index.html',
