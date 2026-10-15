@@ -4,6 +4,13 @@
 (function(){
 function isDone(o){ return !!o.end; }
 function shareOf(o){ return o.share||{xhs:false, dy:false, xy:false}; }
+function isGroup(o){ return Array.isArray(o.models) && o.models.length>0; }
+function groupAuth(o){
+  var m = o.models, n = m.length;
+  var done = m.filter(function(x){ return x.authorized; }).length;
+  var sum = m.reduce(function(s,x){ return s + (x.authorized ? (+x.authFee||0) : 0); }, 0);
+  return { n:n, done:done, sum:sum, all: done===n };
+}
 function statusOf(o){
   if(!isDone(o)) return {cls:'pill-amber', txt:'制作中'};
   if(o.authorized) return {cls:'pill-paid', txt:'已授权 ¥'+(o.authFee||0)};
@@ -39,6 +46,43 @@ function card(o){
   '</div>';
 }
 
+/* 一组模型（含多个子模型）卡片：整组状态 + 逐个子模型授权 */
+function groupCard(o){
+  var gi = groupAuth(o);
+  var pc = gi.all ? 'pcard paid' : 'pcard unpaid';
+  var statusTxt = gi.all ? ('已授权 ¥'+gi.sum) : ('未授权 · 已授权 '+gi.done+'/'+gi.n);
+  var statusCls = gi.all ? 'pill-paid' : 'pill-unpaid';
+  var modelsHtml = o.models.map(function(m){
+    var mpc = m.authorized ? 'pcard paid' : 'pcard unpaid';
+    var mp = m.pic
+      ? '<img '+SH.picAttr(m.pic)+' onclick="Views.order.bigModel(\''+o.id+'\',\''+m.id+'\')" style="width:48px;height:48px;object-fit:cover;border-radius:12px;flex:0 0 auto;cursor:pointer">'
+      : '<div style="width:48px;height:48px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--p50);color:var(--p300);font-size:10px;text-align:center">无图</div>';
+    var mstatus = m.authorized ? '<span class="pill pill-paid">已授权 ¥'+(m.authFee||0)+'</span>' : '<span class="pill pill-unpaid">待授权</span>';
+    return '<div class="clay-card '+mpc+'" style="margin-top:10px">'+
+      '<div class="row">'+mp+'<div class="grow">'+
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--p700)">'+SH.esc(m.name||'子模型')+'</b>'+mstatus+'</div>'+
+        '<div class="sub">'+(m.authorized?('授权 '+(m.authDate||'')):'未授权')+'</div>'+
+      '</div></div>'+
+      (m.authorized ? '' : '<button class="clay-btn mini" style="color:var(--gr-d);margin-top:8px" onclick="Views.order.authorizeModel(\''+o.id+'\',\''+m.id+'\')">'+SH.icon('tag')+'标记授权</button>')+
+    '</div>';
+  }).join('');
+  return '<div class="clay-card '+pc+'">'+
+    '<div class="row"><div class="grow">'+
+      '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--p700);font-size:16px">'+SH.esc(o.name||'未命名模型组')+'</b>'+
+        '<span class="pill '+statusCls+'">'+statusTxt+'</span>'+
+        '<span class="pill pill-self">自设组</span>'+
+        (o.category?'<span class="pill pill-cat">'+SH.esc(o.category)+'</span>':'')+
+      '</div>'+
+      '<div class="sub">共 '+gi.n+' 个模型，已授权 '+gi.done+' 个，授权收入 ¥'+gi.sum+'</div>'+
+    '</div></div>'+
+    modelsHtml+
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+      '<button class="clay-btn mini ghost" onclick="Views.order.edit(\''+o.id+'\')">编辑</button>'+
+      '<button class="clay-btn mini ghost" style="margin-left:auto" onclick="Views.order.del(\''+o.id+'\')">'+SH.icon('trash')+'</button>'+
+    '</div>'+
+  '</div>';
+}
+
 var filterAuth = 'all';
 Views.auth = { render: function(root){
   var orders = (SH.S.orders||[]).slice();
@@ -47,10 +91,10 @@ Views.auth = { render: function(root){
   (SH.S.accessories||[]).forEach(function(a){ if(a.sourceId) inAcc[a.sourceId]=true; });
   var list = orders.filter(function(o){ return o.type==='self' && !inAcc[o.id]; });
 
-  var authed   = list.filter(function(o){ return o.authorized; });
-  var unauthed = list.filter(function(o){ return !o.authorized; });
-  var making   = unauthed.filter(function(o){ return !isDone(o); }).length;
-  var unpaid   = unauthed.filter(function(o){ return isDone(o); }).length;
+  var authed   = list.filter(function(o){ return isGroup(o) ? groupAuth(o).all : o.authorized; });
+  var unauthed = list.filter(function(o){ return isGroup(o) ? !groupAuth(o).all : !o.authorized; });
+  var making   = unauthed.filter(function(o){ return !isGroup(o) && !isDone(o); }).length;
+  var unpaid   = unauthed.length;
 
   /* 各分区按结单时间倒序（最近操作的在前） */
   authed.sort(function(a,b){
@@ -69,7 +113,7 @@ Views.auth = { render: function(root){
     return '<div class="sect-block" style="margin-top:18px">'+
       '<div class="sect" style="margin-top:0">'+SH.icon(cls==='authed'?'check':'clock')+title+' <span class="hint">'+arr.length+'</span>'+
         (sub?'<span class="hint" style="margin-left:6px">'+sub+'</span>':'')+'</div>'+
-      arr.map(card).join('')+
+      arr.map(function(o){ return isGroup(o) ? groupCard(o) : card(o); }).join('')+
     '</div>';
   }
 
@@ -80,7 +124,7 @@ Views.auth = { render: function(root){
   if(list.length===0){
     body = '<div class="clay-card"><p class="empty">还没有自设模型。点右上角「添加自设模型」把做好的模型收进来吧～</p></div>';
   } else {
-    if(showAuthed) body += section('已授权', '已收费 ¥'+authed.reduce(function(s,o){return s+(+o.authFee||0);},0), authed, 'authed');
+    if(showAuthed) body += section('已授权', '授权收入 ¥'+authed.reduce(function(s,o){return s+SH.modelIncome(o);},0), authed, 'authed');
     if(showUnauth) body += section('未授权', making?('制作中 '+making+' · 待授权 '+unpaid):'', unauthed, 'unauth');
     /* 当前分类下没有模型（比如切到「已授权」但还没授权过） */
     if((showAuthed?authed.length:0)+(showUnauth?unauthed.length:0)===0){
@@ -100,7 +144,7 @@ Views.auth = { render: function(root){
     '<div class="stat"><div class="v">'+making+'</div><div class="l">制作中</div></div>'+
     '<div class="stat"><div class="v">'+list.length+'</div><div class="l">自设总数</div></div>'+
   '</div>'+
-  '<div class="clay-card sm"><p class="hint">这里汇集<b>自设的模型</b>（不算接单）。上传展示图、勾选已发布的平台，授权拿到钱后点「标记授权」即可转粉色（已授权）。授权收入会自动计入首页的<b>本月收入</b>。已收进配件库的自设模型会自动从这里移出。</p></div>'+
+  '<div class="clay-card sm"><p class="hint">这里汇集<b>自设的模型</b>（不算接单）。一组模型可在编辑时拆成多个子模型，<b>逐个点「标记授权」</b>；只要有子模型还没授权，整组仍算「未授权」，但已授权的子模型会立刻计入<b>本月收入</b>。整组全部授权后才转入「已授权」。已收进配件库的自设模型会自动从这里移出。</p></div>'+
   body +
   '<div class="clay-card sm"><p class="hint">'+SH.icon('chat')+' 跟 '+SH.esc(SH.vName())+' 说「自设了个OC，发小红书了」会自动建一张；说「XX 授权了，到手 800」会自动记收入并转粉色。</p></div>';
 },
