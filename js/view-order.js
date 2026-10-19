@@ -164,7 +164,7 @@ edit: function(id, lock){
     '</div>'+
   '</div>'+
   '<div id="od_self_box" style="display:'+selfBoxDisplay+'">'+
-    '<p class="hint" style="margin:0 0 8px">这组自设模型可拆成多个子模型，逐个授权、各自计费。</p>'+
+    '<p class="hint" style="margin:0 0 8px">这组自设模型可拆成多个子模型，整组一次性授权、统一计费。</p>'+
     '<div id="od_models"></div>'+
     '<button class="clay-btn mini" style="margin-top:6px" onclick="Views.order.addModel()">'+SH.icon('plus')+' 添加子模型</button>'+
   '</div>'+
@@ -241,35 +241,31 @@ save: function(id){
     dy: document.getElementById('od_dy').checked,
     xy: document.getElementById('od_xy').checked
   };
-  var client='', fee=0, authorized=false, authFee=0, models=null;
+  var client='', fee=0, models=null;
   if(type==='client'){
     client = document.getElementById('od_client').value.trim();
     fee = parseFloat(document.getElementById('od_fee').value)||0;
   } else {
-    /* 自设：从子模型列表 o.models 构建（一组模型，逐个授权计费） */
+    /* 自设：一组模型（整组一次性授权，子模型只存名称/图） */
     models = pendingModels.map(function(m){
       var nm = m.name.trim() || (pendingModels.length===1 ? name : '');
-      return {id:m.id||SH.uid(), name:nm, pic:m.pic||'', authorized:!!m.authorized,
-        authFee:+m.authFee||0, authDate:(m.authorized ? (m.authDate||SH.today()) : '')};
+      return {id:m.id||SH.uid(), name:nm, pic:m.pic||''};
     }).filter(function(m){ return m.name; });
     if(!models.length) return SH.toast('至少填一个子模型名称');
-    authorized = models.every(function(m){ return m.authorized; });
-    authFee = models.reduce(function(s,m){ return s + (m.authorized ? (+m.authFee||0) : 0); }, 0);
   }
   if(id){
     getOrders().forEach(function(o){ if(o.id===id){
       o.name=name; o.type=type; o.category=cat; o.share=share; o.start=start; o.due=due; o.note=note;
-      o.client=client; o.fee=fee; o.authorized=authorized; o.authFee=authFee;
+      o.client=client; o.fee=fee;
       o.models = models || null;
       if(pendingPic!==undefined) o.pic=pendingPic;
       var eEl = document.getElementById('od_end'); if(eEl) o.end = eEl.value;
-      if(o.type==='self' && o.authorized && !o.authDate) o.authDate = SH.today();
+      /* 自设整组授权状态由 authorize 流程管理，编辑时不重算；客订保留 */
     }});
   } else {
     var no = {id:SH.uid(), name:name, type:type, category:cat, share:share,
       start:start, due:due, end:'', rev:0, revLog:[], note:note,
-      client:client, fee:fee, authorized:authorized, authFee:authFee,
-      authDate:(type==='self' && authorized ? SH.today() : ''), pic:pendingPic||''};
+      client:client, fee:fee, authorized:false, authFee:0, authDate:'', pic:pendingPic||''};
     if(models) no.models = models;
     getOrders().push(no);
   }
@@ -320,8 +316,11 @@ doAuthorize: function(id){
   var amt = parseFloat(document.getElementById('au_amt').value)||0;
   var o = getOrders().filter(function(x){return x.id===id;})[0];
   if(!o) return;
-  if(o.type==='self'){ o.authorized=true; o.authFee=amt; if(!o.authDate) o.authDate=SH.today(); }
-  else { o.fee=amt; }
+  if(o.type==='self'){
+    o.authorized=true; o.authFee=amt; if(!o.authDate) o.authDate=SH.today();
+    /* 整组一次性授权：清空子模型的逐笔授权标记，避免重复计入收入 */
+    if(Array.isArray(o.models)) o.models.forEach(function(m){ m.authorized=false; m.authFee=0; });
+  } else { o.fee=amt; }
   if(!o.end) o.end = SH.today();
   SH.save(); SH.closeModal(); SH.refresh();
   SH.toast('已记一笔收入 ✨');
@@ -370,13 +369,7 @@ renderModels: function(){
         '<div style="display:flex;align-items:center;gap:6px"><b style="color:var(--p700)">模型 '+(i+1)+'</b>'+
           (pendingModels.length>1?'<button class="clay-btn mini ghost" onclick="Views.order.delModel('+i+')">'+SH.icon('trash')+'</button>':'')+
         '</div></div></div>'+
-      '<div class="grid2" style="margin-top:8px">'+
-        '<div class="mrow"><label>名称</label><input class="clay-input" value="'+SH.esc(m.name)+'" placeholder="子模型名" onchange="Views.order.setModel('+i+',\'name\',this.value)"></div>'+
-        '<div class="mrow"><label>授权收入 ¥</label><input class="clay-input" type="number" value="'+(m.authFee||'')+'" placeholder="0" onchange="Views.order.setModel('+i+',\'authFee\',this.value)"></div>'+
-      '</div>'+
-      '<div class="mrow"><label>是否已授权</label><select class="clay-input" onchange="Views.order.setModel('+i+',\'authorized\',this.value===\'1\')">'+
-        ['','1'].map(function(v){ return '<option value="'+v+'"'+(m.authorized&&v==='1'?' selected':'')+'>'+(v?'已授权':'待授权')+'</option>'; }).join('')+
-      '</select></div>'+
+      '<div class="mrow" style="margin-top:8px"><label>名称</label><input class="clay-input" value="'+SH.esc(m.name)+'" placeholder="子模型名" onchange="Views.order.setModel('+i+',\'name\',this.value)"></div>'+
       '<div class="mrow"><label>子模型图片</label>'+
         '<label class="clay-btn mini" style="cursor:pointer">上传<input type="file" accept="image/*" style="display:none" onchange="Views.order.pickModel(event,'+i+')"></label>'+
       '</div>'+
@@ -406,27 +399,7 @@ pickModel: function(ev, i){
     Views.order.renderModels();
   });
 },
-/* 单个子模型授权（一组模型中逐个计费，整组未全授权仍算未授权） */
-authorizeModel: function(gid, mid){
-  var o = getOrders().filter(function(x){return x.id===gid;})[0];
-  if(!o || !Array.isArray(o.models)) return;
-  var m = o.models.filter(function(x){return x.id===mid;})[0];
-  if(!m) return;
-  SH.modal('<h3>标记授权</h3>'+
-    '<p class="hint" style="margin-bottom:10px">'+SH.esc(o.name)+' · '+SH.esc(m.name||'子模型')+'</p>'+
-    '<div class="mrow"><label>授权收入 ¥</label><input class="clay-input" id="aum_amt" type="number" value="'+(m.authFee||'')+'" placeholder="0"></div>'+
-    '<button class="clay-btn big" style="width:100%" onclick="Views.order.doAuthorizeModel(\''+gid+'\',\''+mid+'\')">确认授权</button>');
-},
-doAuthorizeModel: function(gid, mid){
-  var amt = parseFloat(document.getElementById('aum_amt').value)||0;
-  var o = getOrders().filter(function(x){return x.id===gid;})[0];
-  if(!o || !Array.isArray(o.models)) return;
-  o.models.forEach(function(m){ if(m.id===mid){ m.authorized=true; m.authFee=amt; if(!m.authDate) m.authDate=SH.today(); } });
-  o.authorized = o.models.every(function(m){ return m.authorized; });
-  if(!o.end) o.end = SH.today();
-  SH.save(); SH.closeModal(); SH.refresh();
-  SH.toast('已记一笔收入 ✨');
-},
+/* 子模型大图查看 */
 bigModel: function(gid, mid){
   var o = getOrders().filter(function(x){return x.id===gid;})[0];
   if(!o || !Array.isArray(o.models)) return;
