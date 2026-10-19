@@ -8,15 +8,25 @@ function incomeList(){
   var evs = [];
   (SH.S.orders||[]).forEach(function(o){
     if(o.type==='self'){
-      /* 自设：可能是单模型，也可能是「一组模型」(o.models) —— 每个已授权的子模型单独计收入 */
-      var ms = (Array.isArray(o.models) && o.models.length) ? o.models : [o];
-      ms.forEach(function(m){
-        if(m.authorized && ((+m.authFee>0) || m.authDate)){
-          var nm = (ms.length>1) ? ((o.name||'模型组')+' · '+(m.name||'子模型')) : (o.name||m.name||'自设模型');
-          evs.push({src:'auth', date:m.authDate||o.end||'', amount:+m.authFee||0,
-            name:nm, cat:o.category||'其他', oid:o.id, mid:m.id});
+      /* 自设：可能是单模型，也可能是「一组模型」(o.models) */
+      if(Array.isArray(o.models) && o.models.length){
+        if(o.authorized){
+          /* 整组一次性授权：整组授权费计为一笔收入 */
+          if((+o.authFee>0) || o.authDate)
+            evs.push({src:'auth', date:o.authDate||o.end||'', amount:+o.authFee||0,
+              name:o.name||'模型组', cat:o.category||'其他', oid:o.id});
+        } else {
+          /* 旧数据：子模型各自授权过 → 各自计收入（向后兼容） */
+          o.models.forEach(function(m){
+            if(m.authorized && ((+m.authFee>0) || m.authDate))
+              evs.push({src:'auth', date:m.authDate||o.end||'', amount:+m.authFee||0,
+                name:(o.name||'模型组')+' · '+(m.name||'子模型'), cat:o.category||'其他', oid:o.id, mid:m.id});
+          });
         }
-      });
+      } else if(o.authorized && ((+o.authFee>0) || o.authDate)){
+        evs.push({src:'auth', date:o.authDate||o.end||'', amount:+o.authFee||0,
+          name:o.name||'自设模型', cat:o.category||'其他', oid:o.id});
+      }
     } else {
       /* 客订：已结单(有 end)且收费 >0 → 收入 = 收费，计入结单月 */
       if(o.end && (+o.fee>0)){
