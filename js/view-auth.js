@@ -46,24 +46,23 @@ function card(o){
   '</div>';
 }
 
-/* 一组模型（含多个子模型）卡片：整组状态 + 逐个子模型授权 */
+/* 一组模型（含多个子模型）卡片：整组状态 + 整组一次性授权 */
 function groupCard(o){
   var gi = groupAuth(o);
-  var pc = gi.all ? 'pcard paid' : 'pcard unpaid';
-  var statusTxt = gi.all ? ('已授权 ¥'+gi.sum) : ('未授权 · 已授权 '+gi.done+'/'+gi.n);
-  var statusCls = gi.all ? 'pill-paid' : 'pill-unpaid';
+  var pc = o.authorized ? 'pcard paid' : 'pcard unpaid';
+  var statusTxt = o.authorized ? ('已授权 ¥'+(+o.authFee||0)) : ('未授权 · 共 '+gi.n+' 个');
+  var statusCls = o.authorized ? 'pill-paid' : 'pill-unpaid';
   var modelsHtml = o.models.map(function(m){
-    var mpc = m.authorized ? 'pcard paid' : 'pcard unpaid';
     var mp = m.pic
       ? '<img '+SH.picAttr(m.pic)+' onclick="Views.order.bigModel(\''+o.id+'\',\''+m.id+'\')" style="width:48px;height:48px;object-fit:cover;border-radius:12px;flex:0 0 auto;cursor:pointer">'
       : '<div style="width:48px;height:48px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--p50);color:var(--p300);font-size:10px;text-align:center">无图</div>';
-    var mstatus = m.authorized ? '<span class="pill pill-paid">已授权 ¥'+(m.authFee||0)+'</span>' : '<span class="pill pill-unpaid">待授权</span>';
-    return '<div class="clay-card '+mpc+'" style="margin-top:10px">'+
+    return '<div class="clay-card" style="margin-top:10px">'+
       '<div class="row">'+mp+'<div class="grow">'+
-        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--p700)">'+SH.esc(m.name||'子模型')+'</b>'+mstatus+'</div>'+
-        '<div class="sub">'+(m.authorized?('授权 '+(m.authDate||'')):'未授权')+'</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--p700)">'+SH.esc(m.name||'子模型')+'</b>'+
+          (o.authorized ? '<span class="pill pill-paid">已授权</span>' : '')+
+        '</div>'+
+        '<div class="sub">'+(o.authorized?'整组已授权':'待整组授权')+'</div>'+
       '</div></div>'+
-      (m.authorized ? '' : '<button class="clay-btn mini" style="color:var(--gr-d);margin-top:8px" onclick="Views.order.authorizeModel(\''+o.id+'\',\''+m.id+'\')">'+SH.icon('tag')+'标记授权</button>')+
     '</div>';
   }).join('');
   return '<div class="clay-card '+pc+'">'+
@@ -73,10 +72,11 @@ function groupCard(o){
         '<span class="pill pill-self">自设组</span>'+
         (o.category?'<span class="pill pill-cat">'+SH.esc(o.category)+'</span>':'')+
       '</div>'+
-      '<div class="sub">共 '+gi.n+' 个模型，已授权 '+gi.done+' 个，授权收入 ¥'+gi.sum+'</div>'+
+      '<div class="sub">共 '+gi.n+' 个模型'+(o.authorized?('，授权收入 ¥'+(+o.authFee||0)):'，整组一次性授权、统一计费')+'</div>'+
     '</div></div>'+
     modelsHtml+
     '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+      (isDone(o) && !o.authorized ? '<button class="clay-btn mini" style="color:var(--gr-d)" onclick="Views.order.authorize(\''+o.id+'\')">'+SH.icon('tag')+'标记授权</button>' : '')+
       '<button class="clay-btn mini ghost" onclick="Views.order.edit(\''+o.id+'\')">编辑</button>'+
       '<button class="clay-btn mini ghost" style="margin-left:auto" onclick="Views.order.del(\''+o.id+'\')">'+SH.icon('trash')+'</button>'+
     '</div>'+
@@ -91,9 +91,9 @@ Views.auth = { render: function(root){
   (SH.S.accessories||[]).forEach(function(a){ if(a.sourceId) inAcc[a.sourceId]=true; });
   var list = orders.filter(function(o){ return o.type==='self' && !inAcc[o.id]; });
 
-  var authed   = list.filter(function(o){ return isGroup(o) ? groupAuth(o).all : o.authorized; });
-  var unauthed = list.filter(function(o){ return isGroup(o) ? !groupAuth(o).all : !o.authorized; });
-  var making   = unauthed.filter(function(o){ return !isGroup(o) && !isDone(o); }).length;
+  var authed   = list.filter(function(o){ return o.authorized; });
+  var unauthed = list.filter(function(o){ return !o.authorized; });
+  var making   = unauthed.filter(function(o){ return !isDone(o); }).length;
   var unpaid   = unauthed.length;
 
   /* 各分区按结单时间倒序（最近操作的在前） */
@@ -144,7 +144,7 @@ Views.auth = { render: function(root){
     '<div class="stat"><div class="v">'+making+'</div><div class="l">制作中</div></div>'+
     '<div class="stat"><div class="v">'+list.length+'</div><div class="l">自设总数</div></div>'+
   '</div>'+
-  '<div class="clay-card sm"><p class="hint">这里汇集<b>自设的模型</b>（不算接单）。一组模型可在编辑时拆成多个子模型，<b>逐个点「标记授权」</b>；只要有子模型还没授权，整组仍算「未授权」，但已授权的子模型会立刻计入<b>本月收入</b>。整组全部授权后才转入「已授权」。已收进配件库的自设模型会自动从这里移出。</p></div>'+
+  '<div class="clay-card sm"><p class="hint">这里汇集<b>自设的模型</b>（不算接单）。一组模型可在编辑时拆成多个子模型，<b>整组一次性「标记授权」、统一计费</b>；只要整组还没授权，就仍算「未授权」。整组授权后会立刻计入<b>本月收入</b>并转入「已授权」。已收进配件库的自设模型会自动从这里移出。</p></div>'+
   body +
   '<div class="clay-card sm"><p class="hint">'+SH.icon('chat')+' 跟 '+SH.esc(SH.vName())+' 说「自设了个OC，发小红书了」会自动建一张；说「XX 授权了，到手 800」会自动记收入并转粉色。</p></div>';
 },
