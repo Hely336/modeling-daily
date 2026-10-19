@@ -111,8 +111,10 @@ SH.weekCN = ['周日','周一','周二','周三','周四','周五','周六'];
 SH.modelIncome = function(o){
   if(!o) return 0;
   if(o.type==='self'){
-    /* 一组模型：收入 = 所有已授权子模型的授权费之和 */
+    /* 一组模型：整组一次性授权后，收入 = 整组授权费（o.authFee）；
+       旧数据若未整组授权、但子模型各自授权过，则累加那些已授权子模型（向后兼容）。 */
     if(Array.isArray(o.models) && o.models.length){
+      if(o.authorized) return +o.authFee||0;
       return o.models.reduce(function(s,m){ return s + (m.authorized ? (+m.authFee||0) : 0); }, 0);
     }
     return o.authorized ? (+o.authFee||0) : 0;
@@ -448,7 +450,7 @@ function bindViewport(){
    从此已安装的 PWA(添加到主屏幕)无需手动清缓存即可拿到最新代码。 */
 SH.checkUpdate = function(){
   try{
-    var APP_VER = '20261014a';
+    var APP_VER = '20261019a';
     fetch('version.json?t=' + Date.now(), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(j){
